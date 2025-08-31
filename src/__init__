@@ -14,14 +14,49 @@ function __main__() {
   # Stores the current date.
   readonly _cdate=$(date +%Y%m%d)
 
-  # Variables related to the log file. Divided into three parts due
-  # to the better possibility of manipulation for the user.
+  # Resolve writable runtime directories (state/tmp/output) with XDG support.
+  # This makes packaging-friendly paths that work outside the nix store.
+  # Prefer env overrides, then XDG dirs, then sensible fallbacks.
+
+  # Base state directory (logs, tmp by default)
   # shellcheck disable=SC2154
-  readonly _log_directory="${_rel}/log"
-  # shellcheck disable=SC2154
+  _xdg_state_home="${XDG_STATE_HOME:-}"
+  if [[ -z "$_xdg_state_home" && -n "${HOME:-}" ]] ; then
+    _xdg_state_home="${HOME}/.local/state"
+  fi
+  if [[ -z "$_xdg_state_home" ]] ; then
+    _xdg_state_home="/var/tmp"
+  fi
+
+  # shellcheck disable=SC2034
+  readonly _state="${SANDMAP_STATE_DIR:-${_xdg_state_home}/sandmap}"
+
+  # Temporary directory
+  # shellcheck disable=SC2034
+  readonly _tmp="${SANDMAP_TMPDIR:-${XDG_RUNTIME_DIR:-${_state}/tmp}}"
+
+  # Output directory for reports
+  _xdg_data_home="${XDG_DATA_HOME:-}"
+  if [[ -z "$_xdg_data_home" && -n "${HOME:-}" ]] ; then
+    _xdg_data_home="${HOME}/.local/share"
+  fi
+  if [[ -z "$_xdg_data_home" ]] ; then
+    _xdg_data_home="${_state}"
+  fi
+  # shellcheck disable=SC2034
+  readonly _out="${SANDMAP_OUT_DIR:-${_xdg_data_home}/sandmap/output}"
+
+  # Variables related to the log file. Divided into three parts
+  # due to the better possibility of manipulation for the user.
+  # shellcheck disable=SC2034
+  readonly _log_directory="${SANDMAP_LOG_DIR:-${_state}/log}"
   readonly _log_file="${_init_name}.${_cdate}.log"
   readonly _log_stdout="${_log_directory}/stdout.log"
   readonly _log_path="${_log_directory}/${_log_file}"
+
+  # Ensure writable runtime dirs exist when possible
+  if [[ ! -d "$_state" && ! -L "$_state" ]] ; then mkdir -p "$_state" >/dev/null 2>&1 ; fi
+  if [[ ! -d "$_tmp" && ! -L "$_tmp" ]] ; then mkdir -p "$_tmp" >/dev/null 2>&1 ; fi
 
   # We check if we are a root user.
   if [[ "$EUID" -ne 0 ]] ; then

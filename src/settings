@@ -19,7 +19,9 @@ set -o pipefail
 #   IFS="$IFS_HACK"
 
 # PATH env variable setup:
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Respect existing PATH from environment (e.g. wrappers),
+# otherwise fall back to a reasonable default.
+PATH="${PATH:-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin}"
 
 # Setting permissions in the script environment:
 #   0022 - less restrictive settings (default value)
